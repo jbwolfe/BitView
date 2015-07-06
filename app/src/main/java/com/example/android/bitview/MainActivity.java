@@ -5,21 +5,15 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.drawable.Drawable;
-import android.media.Image;
+import android.graphics.Color;
 import android.net.Uri;
-import android.provider.MediaStore;
 import android.os.Bundle;
-import android.util.Log;
-import android.support.v7.app.ActionBarActivity;
+import android.provider.MediaStore;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
-import android.widget.Toast;
-
-import android.graphics.Color;
 
 
 public class MainActivity extends Activity {
@@ -69,25 +63,7 @@ public class MainActivity extends Activity {
             String picturePath = cursor.getString(columnIndex);
             cursor.close();
 
-            Bitmap nonMutablePic = BitmapFactory.decodeFile(picturePath);
-            Bitmap pic = nonMutablePic.copy(Bitmap.Config.ARGB_8888, true);
-
-            int picHeight = pic.getHeight();
-            int picWidth = pic.getWidth();
-
-            int x, y, pixel, red, green, blue;
-            for(y=0; y<picHeight/2; y++) {
-                for(x=0; x<picWidth/2; x++) {
-                    pixel = pic.getPixel(x, y);
-                    red = Color.red(pixel);
-                    green = Color.green(pixel);
-                    blue = Color.blue(pixel);
-
-                    pic.setPixel(x, y, Color.rgb(red, green, blue));
-                }
-            }
-            Log.e(TAG, "PATH: " + picturePath);
-            Log.e(TAG, "WIDTH: " + picWidth + "\tHEIGHT:" + picHeight);
+            Bitmap pic = processBitmap(picturePath);
 
             ImageView imageView = (ImageView) findViewById(R.id.imageViewer);
             imageView.setImageBitmap(pic);
@@ -114,5 +90,52 @@ public class MainActivity extends Activity {
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    private Bitmap processBitmap(String picturePath) {
+        /**
+         * Process the selected bitmap to become a 3-bit, dithered image!
+         */
+
+        // The Bitmap from decoding file is non-mutable :( Realistically that's good because I
+        // don't want to derp up my images. So let's make a mutable copy to work with! :D
+        Bitmap nonMutablePic = BitmapFactory.decodeFile(picturePath);
+        Bitmap pic = nonMutablePic.copy(Bitmap.Config.ARGB_8888, true);
+
+        // Get dimensions to base the following work off of.
+        int picHeight = pic.getHeight();
+        int picWidth = pic.getWidth();
+
+        // In this block we're go to change every pixel to the closest 3-bit value. Then we're
+        // going to "dither", or randomize, the further pixels as to make the image look more
+        // cleaner... for a 3-bit looking image that is... Ha!
+        int x, y, oldPixel, newPixel;
+        int quantError, rightPixel, rightBottomPixel, bottomPixel, leftBottomPixel;
+        for(y=0; y<picHeight; y++) {
+            for(x=0; x<picWidth; x++) {
+                oldPixel = pic.getPixel(x, y);
+                newPixel = colorPicker(oldPixel);
+                pic.setPixel(x, y, newPixel);
+
+            }
+        }
+
+        return pic;
+    }
+
+    private int colorPicker(int pixel) {
+        /**
+         * Figure out what the closest 3 bit color is to this pixel and change it to that!
+         */
+        int red, green, blue, alpha;
+
+        red   = (Color.red(pixel)   >= 127) ? 255 : 0;
+        green = (Color.green(pixel) >= 127) ? 255 : 0;
+        blue  = (Color.blue(pixel)  >= 127) ? 255 : 0;
+
+        // Keeping image alpha in case future work might need it.
+        alpha =  Color.alpha(pixel);
+
+        return Color.argb(alpha, red, green, blue);
     }
 }
