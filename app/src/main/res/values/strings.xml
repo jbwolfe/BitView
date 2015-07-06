@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">BitView</string>
+
+    <string name="saveFileTitle">Save Image</string>
+    <string name="cameraButtonLabel">Camera</string>
+    <string name="galleryButtonLabel">Gallery</string>
+</resources>
