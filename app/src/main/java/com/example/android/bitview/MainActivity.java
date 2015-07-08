@@ -163,7 +163,7 @@ public class MainActivity extends Activity {
 
         alpha =  Color.alpha(pixel);
 
-        return Color.argb(alpha, red, green, blue);
+        return Color.argb(255, red, green, blue);
     }
 
     private int computeQuantizationError(int oldPixel, int newPixel) {
