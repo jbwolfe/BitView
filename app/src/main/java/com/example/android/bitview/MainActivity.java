@@ -8,6 +8,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.provider.MediaStore;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -16,12 +17,17 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.Toast;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
 
 public class MainActivity extends Activity {
 
     private static final String TAG = "MainActivity";
-    private static final int REQUEST_IMAGE_CAPTURE = 1;
-    private static final int SELECT_IMAGE = 1;
+    private static int REQUEST_IMAGE_CAPTURE = 2;
     private static int RESULT_LOAD_IMAGE = 1;
 
     @Override
@@ -29,29 +35,62 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        // Open camera, process taken picture, view the processed captured picture.
         final Button cameraButton = (Button) findViewById(R.id.cameraButton);
         cameraButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 // Perform action on click
+                Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
+                    startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE);
+                }
+
             }
         });
 
+        // Open gallery, process chosen picture, view the processed chosen picture.
         final Button galleryButton = (Button) findViewById(R.id.galleryButton);
         galleryButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
+                // Perform action on click
                 Intent i = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
                 startActivityForResult(i, RESULT_LOAD_IMAGE);
             }
         });
 
+        // Long long click, save processed picture if there is one there.
         final ImageView imageViewer = (ImageView) findViewById(R.id.imageViewer);
         imageViewer.setLongClickable(true);
         imageViewer.setOnLongClickListener(new View.OnLongClickListener() {
             public boolean onLongClick(View v) {
+                // Perform action on long click
                 if (imageViewer.getDrawable() != null) {
+                    File storageDir = new File(Environment.getExternalStoragePublicDirectory(
+                            Environment.DIRECTORY_PICTURES) + File.separator + "BitView");
+                    if(!storageDir.isDirectory()) {
+                        storageDir.mkdir();
+                    }
+
+                    String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+                    String imageFileName = "BitView_" + timeStamp + ".png";
+
+                    ImageView imageView = (ImageView) findViewById(R.id.imageViewer);
+                    imageView.buildDrawingCache();
+                    Bitmap bitmap = imageView.getDrawingCache();
+
+                    FileOutputStream fp;
+                    try {
+                        fp = new FileOutputStream(new File(storageDir+File.separator+imageFileName));
+                        bitmap.compress(Bitmap.CompressFormat.PNG, 100, fp);
+                        fp.flush();
+                        fp.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+
                     Toast.makeText(getApplicationContext(),
-                            "Long Clicked " + imageViewer.getDrawable() + ".",
-                            Toast.LENGTH_SHORT).show();
+                            "FILE PATH: " + storageDir +"/"+ imageFileName,
+                            Toast.LENGTH_LONG).show();
                 }
 
                 return true;
@@ -76,6 +115,15 @@ public class MainActivity extends Activity {
 
             Bitmap nonMutablePic = BitmapFactory.decodeFile(picturePath);
             Bitmap pic = processBitmap(nonMutablePic);
+
+            ImageView imageView = (ImageView) findViewById(R.id.imageViewer);
+            imageView.setImageBitmap(pic);
+        }
+        else if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
+            Bundle extras = data.getExtras();
+
+            Bitmap imageBitmap = (Bitmap) extras.get("data");
+            Bitmap pic = processBitmap(imageBitmap);
 
             ImageView imageView = (ImageView) findViewById(R.id.imageViewer);
             imageView.setImageBitmap(pic);
@@ -127,24 +175,24 @@ public class MainActivity extends Activity {
                 newPixel = colorPicker(oldPixel);
                 pic.setPixel(x, y, newPixel);
 
-                quantError = computeQuantizationError(oldPixel, newPixel);
-
-                if(x+1 < picWidth) {
-                    rightPixel = pic.getPixel(x+1, y);
-                    pic.setPixel(x+1, y, ditherPixel(rightPixel, quantError, 7.0/16.0));
-                }
-                if(x+1<picWidth && y+1<picHeight) {
-                    bottomRightPixel = pic.getPixel(x+1, y+1);
-                    pic.setPixel(x+1, y+1, ditherPixel(bottomRightPixel, quantError, 1.0/16.0));
-                }
-                if(y+1 < picHeight) {
-                    bottomPixel = pic.getPixel(x, y+1);
-                    pic.setPixel(x, y+1, ditherPixel(bottomPixel, quantError, 5.0/16.0));
-                }
-                if(x-1>=0 && y+1<picHeight) {
-                    bottomLeftPixel = pic.getPixel(x-1, y+1);
-                    pic.setPixel(x-1, y+1, ditherPixel(bottomLeftPixel, quantError, 3.0/16.0));
-                }
+//                quantError = computeQuantizationError(oldPixel, newPixel);
+//
+//                if(x+1 < picWidth) {
+//                    rightPixel = pic.getPixel(x+1, y);
+//                    pic.setPixel(x+1, y, ditherPixel(rightPixel, quantError, 7.0/16.0));
+//                }
+//                if(x+1<picWidth && y+1<picHeight) {
+//                    bottomRightPixel = pic.getPixel(x+1, y+1);
+//                    pic.setPixel(x+1, y+1, ditherPixel(bottomRightPixel, quantError, 1.0/16.0));
+//                }
+//                if(y+1 < picHeight) {
+//                    bottomPixel = pic.getPixel(x, y+1);
+//                    pic.setPixel(x, y+1, ditherPixel(bottomPixel, quantError, 5.0/16.0));
+//                }
+//                if(x-1>=0 && y+1<picHeight) {
+//                    bottomLeftPixel = pic.getPixel(x-1, y+1);
+//                    pic.setPixel(x-1, y+1, ditherPixel(bottomLeftPixel, quantError, 3.0/16.0));
+//                }
             }
         }
 
@@ -155,54 +203,48 @@ public class MainActivity extends Activity {
         /**
          * Figure out what the closest 3 bit color is to this pixel and change it to that!
          */
-        int red, green, blue, alpha;
+        int red, green, blue;
 
-        red   = (Color.red(pixel)   >= 127) ? 255 : 0;
-        green = (Color.green(pixel) >= 127) ? 255 : 0;
-        blue  = (Color.blue(pixel)  >= 127) ? 255 : 0;
+        red   = (Color.red(pixel)   > 127) ? 0xff : 0x00;
+        green = (Color.green(pixel) > 127) ? 0xff : 0x00;
+        blue  = (Color.blue(pixel)  > 127) ? 0xff : 0x00;
 
-        alpha =  Color.alpha(pixel);
-
-        return Color.argb(255, red, green, blue);
+        return Color.rgb(red, green, blue);
     }
 
     private int computeQuantizationError(int oldPixel, int newPixel) {
         /**
          * Computer the quantization error between the original pixel and the newly colored pixel.
          */
-        int oldRed, oldGreen, oldBlue, oldAlpha,
-            newRed, newGreen, newBlue, newAlpha;
+        int oldRed, oldGreen, oldBlue,
+            newRed, newGreen, newBlue;
 
         oldRed   = Color.red(oldPixel);
         oldGreen = Color.green(oldPixel);
         oldBlue  = Color.blue(oldPixel);
-        oldAlpha = Color.alpha(oldPixel);
 
         newRed   = Color.red(newPixel);
         newGreen = Color.green(newPixel);
         newBlue  = Color.blue(newPixel);
-        newAlpha = Color.alpha(newPixel);
 
-        return Color.argb(255, oldRed-newRed, oldGreen-newGreen, oldBlue-newBlue);
+        return Color.rgb(oldRed - newRed, oldGreen - newGreen, oldBlue - newBlue);
     }
 
     private int ditherPixel(int futurePixel, int quantError, double factor) {
         /**
          * Dither pixel that has yet to be reached.
          */
-        int futureRed, futureGreen, futureBlue, futureAlpha,
-            quantRed,  quantGreen,  quantBlue,  quantAlpha;
+        int futureRed, futureGreen, futureBlue,
+            quantRed,  quantGreen,  quantBlue;
 
         quantRed   = (int)(Color.red(quantError)   * factor);
         quantGreen = (int)(Color.green(quantError) * factor);
         quantBlue  = (int)(Color.blue(quantError)  * factor);
-        quantAlpha = (int)(Color.alpha(quantError) * factor);
 
         futureRed   = Color.red(futurePixel);
         futureGreen = Color.green(futurePixel);
         futureBlue  = Color.blue(futurePixel);
-        futureAlpha = Color.alpha(futureRed);
 
-        return Color.argb(255, futureRed+quantRed, futureGreen+quantGreen, futureBlue+quantBlue);
+        return Color.rgb(futureRed + quantRed, futureGreen + quantGreen, futureBlue + quantBlue);
     }
 }
