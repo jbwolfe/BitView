@@ -67,7 +67,7 @@ public class MainActivity extends Activity {
                 if (imageViewer.getDrawable() != null) {
                     File storageDir = new File(Environment.getExternalStoragePublicDirectory(
                             Environment.DIRECTORY_PICTURES) + File.separator + "BitView");
-                    if(!storageDir.isDirectory()) {
+                    if (!storageDir.isDirectory()) {
                         storageDir.mkdir();
                     }
 
@@ -80,7 +80,7 @@ public class MainActivity extends Activity {
 
                     FileOutputStream fp;
                     try {
-                        fp = new FileOutputStream(new File(storageDir+File.separator+imageFileName));
+                        fp = new FileOutputStream(new File(storageDir + File.separator + imageFileName));
                         bitmap.compress(Bitmap.CompressFormat.PNG, 100, fp);
                         fp.flush();
                         fp.close();
@@ -89,7 +89,7 @@ public class MainActivity extends Activity {
                     }
 
                     Toast.makeText(getApplicationContext(),
-                            "FILE PATH: " + storageDir +"/"+ imageFileName,
+                            "FILE PATH: " + storageDir + "/" + imageFileName,
                             Toast.LENGTH_LONG).show();
                 }
 
@@ -175,24 +175,26 @@ public class MainActivity extends Activity {
                 newPixel = colorPicker(oldPixel);
                 pic.setPixel(x, y, newPixel);
 
-//                quantError = computeQuantizationError(oldPixel, newPixel);
-//
-//                if(x+1 < picWidth) {
-//                    rightPixel = pic.getPixel(x+1, y);
-//                    pic.setPixel(x+1, y, ditherPixel(rightPixel, quantError, 7.0/16.0));
-//                }
-//                if(x+1<picWidth && y+1<picHeight) {
-//                    bottomRightPixel = pic.getPixel(x+1, y+1);
-//                    pic.setPixel(x+1, y+1, ditherPixel(bottomRightPixel, quantError, 1.0/16.0));
-//                }
-//                if(y+1 < picHeight) {
-//                    bottomPixel = pic.getPixel(x, y+1);
-//                    pic.setPixel(x, y+1, ditherPixel(bottomPixel, quantError, 5.0/16.0));
-//                }
-//                if(x-1>=0 && y+1<picHeight) {
-//                    bottomLeftPixel = pic.getPixel(x-1, y+1);
-//                    pic.setPixel(x-1, y+1, ditherPixel(bottomLeftPixel, quantError, 3.0/16.0));
-//                }
+                quantError = computeQuantizationError(oldPixel, newPixel);
+
+                if(x+1 < picWidth) { // Right pixel
+                    rightPixel = pic.getPixel(x+1, y);
+                    pic.setPixel(x+1, y, ditherPixel(rightPixel, quantError, 7.0/16.0));
+
+                    if (y+1 < picHeight) { // Right bottom pixel
+                        bottomRightPixel = pic.getPixel(x+1, y+1);
+                        pic.setPixel(x + 1, y+1, ditherPixel(bottomRightPixel, quantError, 1.0/16.0));
+                    }
+                }
+                if(y+1 < picHeight) { // Bottom pixel
+                    bottomPixel = pic.getPixel(x, y+1);
+                    pic.setPixel(x, y+1, ditherPixel(bottomPixel, quantError, 5.0/16.0));
+
+                    if (x-1 >= 0) { // Left bottom pixel
+                        bottomLeftPixel = pic.getPixel(x-1, y+1);
+                        pic.setPixel(x-1, y+1, ditherPixel(bottomLeftPixel, quantError, 3.0/16.0));
+                    }
+                }
             }
         }
 
@@ -203,48 +205,54 @@ public class MainActivity extends Activity {
         /**
          * Figure out what the closest 3 bit color is to this pixel and change it to that!
          */
-        int red, green, blue;
+        int red, green, blue, alpha;
 
-        red   = (Color.red(pixel)   > 127) ? 0xff : 0x00;
-        green = (Color.green(pixel) > 127) ? 0xff : 0x00;
-        blue  = (Color.blue(pixel)  > 127) ? 0xff : 0x00;
+        red   = (Color.red(pixel)   > 127) ? 255 : 0;
+        green = (Color.green(pixel) > 127) ? 255 : 0;
+        blue  = (Color.blue(pixel)  > 127) ? 255 : 0;
+        alpha = Color.alpha(pixel);
 
-        return Color.rgb(red, green, blue);
+        return Color.argb(alpha, red, green, blue);
     }
 
     private int computeQuantizationError(int oldPixel, int newPixel) {
         /**
          * Computer the quantization error between the original pixel and the newly colored pixel.
          */
-        int oldRed, oldGreen, oldBlue,
-            newRed, newGreen, newBlue;
+        int oldRed, oldGreen, oldBlue, oldAlpha,
+            newRed, newGreen, newBlue, newAlpha;
 
         oldRed   = Color.red(oldPixel);
         oldGreen = Color.green(oldPixel);
         oldBlue  = Color.blue(oldPixel);
+        oldAlpha = Color.alpha(oldPixel);
 
         newRed   = Color.red(newPixel);
         newGreen = Color.green(newPixel);
         newBlue  = Color.blue(newPixel);
+        newAlpha = Color.alpha(newPixel);
 
-        return Color.rgb(oldRed - newRed, oldGreen - newGreen, oldBlue - newBlue);
+        return Color.argb(newAlpha, oldRed - newRed, oldGreen - newGreen, oldBlue - newBlue);
     }
 
     private int ditherPixel(int futurePixel, int quantError, double factor) {
         /**
          * Dither pixel that has yet to be reached.
          */
-        int futureRed, futureGreen, futureBlue,
-            quantRed,  quantGreen,  quantBlue;
+        int futureRed, futureGreen, futureBlue, futureAlpha,
+            quantRed,  quantGreen,  quantBlue, quantAlpha;
 
         quantRed   = (int)(Color.red(quantError)   * factor);
         quantGreen = (int)(Color.green(quantError) * factor);
         quantBlue  = (int)(Color.blue(quantError)  * factor);
+        quantAlpha = (int)(Color.alpha(quantError));
 
         futureRed   = Color.red(futurePixel);
         futureGreen = Color.green(futurePixel);
         futureBlue  = Color.blue(futurePixel);
+        futureAlpha = Color.alpha(futurePixel);
 
-        return Color.rgb(futureRed + quantRed, futureGreen + quantGreen, futureBlue + quantBlue);
+//        return Color.argb(futureAlpha, futureRed + quantRed, futureGreen + quantGreen, futureBlue + quantBlue);
+        return Color.argb(futureAlpha, futureRed, futureGreen, futureBlue);
     }
 }
